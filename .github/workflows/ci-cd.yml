@@ -1,52 +1,65 @@
-name: CI/CD Pipeline for ASP.NET Core
+name: Build and Deploy ASP.NET Web App
 
+# Este pipeline se ejecuta cada vez que se haga un push a la rama main
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - master  # Cambia a tu rama principal si es diferente, como master
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: windows-latest  # Usa la última versión de Windows para ejecutar la acción
 
     steps:
-      - name: Checkout code
+      # Paso 1: Checkout del repositorio
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v2
+      # Paso 2: Configurar .NET Core
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '6.x'
+          dotnet-version: '6.0'  # Usa la versión de .NET que corresponde a tu proyecto
 
-      - name: Install dependencies
+      # Paso 3: Restaurar dependencias de NuGet
+      - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build the application
-        run: dotnet build --no-restore
+      # Paso 4: Construir el proyecto en modo Release
+      - name: Build the project
+        run: dotnet build --configuration Release
 
+      # Paso 5: Ejecutar pruebas unitarias
       - name: Run tests
-        run: dotnet test --no-restore --verbosity normal
+        run: dotnet test --configuration Release
+
+      # Paso 6: Publicar la aplicación (se generarán los archivos listos para despliegue)
+      - name: Publish the app
+        run: dotnet publish --configuration Release --output ./published
 
   deploy:
-    needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Usamos Ubuntu para el despliegue, puede cambiarse si usas otro sistema
+
+    needs: build  # Este trabajo depende del éxito del trabajo de construcción
 
     steps:
-      - name: Checkout code
+      # Paso 1: Checkout del repositorio nuevamente
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v2
-        with:
-          dotnet-version: '6.x'
+      # Paso 2: Configuración de Azure CLI para despliegue (si deseas desplegar en Azure)
+      - name: Set up Azure CLI
+        uses: azure/setup-azure-cli@v1
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+      # Paso 3: Iniciar sesión en Azure (utilizando secretos de GitHub para autenticación)
+      - name: Azure login
+        uses: azure/login@v1
         with:
-          app-name: 'NombreDeTuAzureWebApp'
-          slot-name: 'production'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
+      # Paso 4: Desplegar la aplicación a Azure (usando Azure Web App)
+      - name: Deploy to Azure Web App
+        run: |
+          az webapp deploy --resource-group myResourceGroup --name myWebApp --src-path ./published
