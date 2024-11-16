@@ -1,31 +1,35 @@
-name: Build and Test ASP.NET
+name: Build and Deploy ASP.NET Web App
 
 on:
   push:
     branches:
-      - main
-
+      - master  
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '6.0' # Cambiar según la versión usada en tu proyecto
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0'  
 
-    - name: Restore dependencies
-      run: dotnet restore
+      - name: Restore dependencies
+        run: dotnet restore
 
-    - name: Build Project
-      run: dotnet build --no-restore
+      - name: Build the project
+        run: dotnet build --configuration Release
 
-    - name: Run Tests
-      run: dotnet test --no-build --verbosity normal
+      - name: Run tests
+        run: dotnet test --configuration Release
 
-    - name: Publish for Deployment
-      run: dotnet publish -c Release -o published/
+      - name: Publish the app
+        run: dotnet publish --configuration Release --output ./published
+
+      - name: Deploy to Azure (opcional)
+        run: |
+          echo "Deploying to Azure"
+          # Puedes agregar aquí tu código para el despliegue en Azure o cualquier otro entorno
